@@ -62,12 +62,12 @@ kubectl completion powershell | Out-String | Invoke-Expression
 3. Add the Google Kubernetes Engine (GKE) cluster context to the `kubectl` config:
 
     ```sh
-    gcloud container clusters get-credentials cloudlabs-241212 --region=europe-north1
+    gcloud container clusters get-credentials cloudlabs-25 --region=europe-north1
     ```
 
 4. Confirm successful `kubectl` setup by running `kubectl get namespaces`.
 
-5. An online UI is available at [kube-dashboard.cloudlabs-gcp.no](https://kube-dashboard.cloudlabs-gcp.no). It requires an authentication token. Run `kubectl auth print-access-token` to generate a token, and copy it to online UI to log in.
+5. An online UI is available at [kube-dashboard.cloudlabs-gcp.no](https://kube-dashboard.cloudlabs-gcp.no). It requires an authentication token. Run `gcloud auth print-access-token` to generate a token, and copy it to online UI to log in.
 
 
 ## Your first pod - the imperative way
@@ -152,7 +152,7 @@ Running commands to spin up pods is not ideal. We want to use code to specify ou
 > 
 > Run `kubens <namespace-name>`. From now on, you can write commands without `--namespace <namespace-name>`. Commands in the workshop will explicitly use the argument, even if it's not needed.
 
-3. Similarly, create a manifest for a pod running `nginx` in `podinfo/pod.yaml`, using `kubectl run --namespace <namespace-name> <pod-name> --image=stefanprodan/nginx --port=80 --dry-run=client -o yaml`. Apply the manifests using `kubectl apply -R -f podinfo/` after creating it.
+3. Similarly, create a manifest for a pod running `nginx` in `podinfo/pod.yaml`, using `kubectl run --namespace <namespace-name> <pod-name> --image=nginx --port=80 --dry-run=client -o yaml`. Apply the manifests using `kubectl apply -R -f podinfo/` after creating it.
 
 4. Verify that the pod is created and in `Running` state in the correct namespace.
 
@@ -268,3 +268,68 @@ In GKE, there are multiple ways to expose services externally: LoadBalancers, In
 
 2. Look at the updates to the service, and fetch the new field "EXTERNAL-IP". Visit `http://<your-ip>/` and see your app in action. Refresh multiple times to see different pods responding.
 
+
+## Configuration and Resources
+
+The following tasks are more open-ended. You will need to look up the documentation to find out how to solve them.
+
+### Resources
+
+By default, containers have no resource constraints. It is good practice to specify how much CPU and memory (RAM) each container needs.
+
+1. Modify your `podinfo/deployment.yaml` to add resource requests and limits for the container.
+    *   Set memory request to `64Mi` and limit to `128Mi`.
+    *   Set CPU request to `10m`.
+
+> [!TIP]
+> See [Managing Resources for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) for syntax and examples.
+
+2. Apply the changes and verify that the pods are recreated with the new configuration. You can check this with `kubectl describe pod <pod-name>`.
+
+### Environment Variables
+
+You can inject configuration into your application using environment variables.
+
+1. Modify `podinfo/deployment.yaml` to add an environment variable named `PODINFO_UI_COLOR` with the value `#34577c` (or any other hex color you like).
+
+    > [!TIP]
+    > See [Define Environment Variables for a Container](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/).
+
+2. Apply the changes.
+3. Visit the external IP of your service again. The UI header color should have changed.
+
+### ConfigMaps
+
+Hardcoding environment variables in the deployment manifest is not always ideal. ConfigMaps allow you to decouple configuration artifacts from image content.
+
+1. Create a new file `podinfo/configmap.yaml`.
+2. Define a ConfigMap named `podinfo-config` containing the data `ui-color: "#34577c"`.
+3. Modify `podinfo/deployment.yaml` to load the `PODINFO_UI_COLOR` environment variable from the ConfigMap instead of defining the value directly.
+
+    > [!TIP]
+    > See [Configure a Pod to Use a ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#define-container-environment-variables-using-configmap-data).
+
+4. Apply both files (`kubectl apply -R -f podinfo/`).
+5. Verify that the application still works and uses the configured color.
+
+### Secrets
+
+Secrets are similar to ConfigMaps but are intended to hold sensitive information.
+
+1. Create a new file `podinfo/secret.yaml`.
+2. Define a Secret named `podinfo-secret` containing a key `api-key` with some dummy value.
+3. Modify `podinfo/deployment.yaml` to inject this secret as an environment variable named `PODINFO_API_KEY`.
+
+    > [!TIP]
+    > See [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables).
+
+4. Apply the changes.
+5. Verify the secret is injected by running `kubectl exec -it <pod-name> -- env | grep PODINFO_API_KEY`.
+
+## Cleanup
+
+To cleanup the resources created in this workshop, run:
+
+```sh
+kubectl delete namespace <namespace-name>
+```
