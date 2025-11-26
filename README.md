@@ -326,6 +326,38 @@ Secrets are similar to ConfigMaps but are intended to hold sensitive information
 4. Apply the changes.
 5. Verify the secret is injected by running `kubectl exec -it <pod-name> -- env | grep PODINFO_API_KEY`.
 
+## Debugging and Observability
+
+When things go wrong, you need tools to investigate.
+
+### Logs
+
+Logs are the first place to look when an application is behaving unexpectedly.
+
+1. View logs for a pod: `kubectl logs <pod-name>`.
+2. Follow logs in real-time: `kubectl logs -f <pod-name>`.
+3. If a pod has multiple containers, specify the container name: `kubectl logs <pod-name> -c <container-name>`.
+
+> [!TIP]
+> In k9s, you can press `l` to view logs for a selected pod.
+
+### Events
+
+Kubernetes emits events when resources change state or when errors occur (e.g., scheduling failures, image pull errors).
+
+1. List events in the namespace: `kubectl get events`.
+2. Describe a resource to see events related to it: `kubectl describe pod <pod-name>`.
+
+### Executing commands
+
+Sometimes you need to poke around inside a running container.
+
+1. Start an interactive shell: `kubectl exec -it <pod-name> -- /bin/sh` (or `/bin/bash`).
+2. Check file system, environment variables, network connectivity, etc.
+
+> [!NOTE]
+> Not all containers can run a shell. Some minimal containers may not have a shell installed.
+
 ## Cleanup
 
 To cleanup the resources created in this workshop, run:
