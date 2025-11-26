@@ -290,7 +290,7 @@ By default, containers have no resource constraints. It is good practice to spec
 
 You can inject configuration into your application using environment variables.
 
-1. Modify `podinfo/deployment.yaml` to add an environment variable named `PODINFO_UI_COLOR` with the value `#34577c` (or any other hex color you like).
+1. Modify `podinfo/deployment.yaml` to add an environment variable named `PODINFO_UI_COLOR` with the value `#ffffff` (or any other hex color you like).
 
     > [!TIP]
     > See [Define Environment Variables for a Container](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/).
@@ -357,6 +357,28 @@ Sometimes you need to poke around inside a running container.
 
 > [!NOTE]
 > Not all containers can run a shell. Some minimal containers may not have a shell installed.
+
+## Security
+
+Security is a critical aspect of Kubernetes. By default, pods are quite permissive. Let's lock them down.
+
+### Security Context
+
+You can configure security settings for a Pod or Container using the `securityContext` field.
+
+1. Modify `podinfo/deployment.yaml` to add a `securityContext` to the container.
+2. Configure the following settings:
+    *   **Read-only filesystem**: `readOnlyRootFilesystem: true`. This prevents the application from writing to the root filesystem.
+    *   **Disallow privilege escalation**: `allowPrivilegeEscalation: false`. This prevents the process from gaining more privileges than its parent process.
+    *   **Run as non-root**: `runAsNonRoot: true` and `runAsUser: 1000` (or another non-root UID). This ensures the container runs as a regular user.
+    *   **Drop capabilities**: Drop `ALL` capabilities. This removes all default Linux capabilities from the container.
+
+> [!TIP]
+> See [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+
+3. Apply the changes.
+4. Verify the changes by inspecting the pod: `kubectl get pod <pod-name> -o yaml`.
+5. Try to write to the filesystem inside the container: `kubectl exec -it <pod-name> -- touch /tmp/test`. This should fail if the filesystem is read-only (note: you might need to mount a volume to `/tmp` if the app needs to write there, but for this exercise, seeing it fail is the goal).
 
 ## Cleanup
 
