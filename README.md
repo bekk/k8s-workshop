@@ -12,7 +12,7 @@ We'll use the following tools:
 
 For macOS, you can use `brew install kubectl kubectx gcloud`.
 
-After installing the tools, we'll need to install some additional plugins to `gcloud`: 
+After installing the tools, we'll need to install some additional plugins to `gcloud`:
 
 ```sh
 gcloud components install gke-gcloud-auth-plugin
@@ -62,12 +62,12 @@ kubectl completion powershell | Out-String | Invoke-Expression
 3. Add the Google Kubernetes Engine (GKE) cluster context to the `kubectl` config:
 
     ```sh
-    gcloud container clusters get-credentials cloudlabs-25 --region=europe-north1
+    gcloud container clusters get-credentials cloudlabs-25 --region=europe-north1 --project=cloud-labs-workshop-42clws
     ```
 
 4. Confirm successful `kubectl` setup by running `kubectl get namespaces`.
 
-5. An online UI is available at [kube-dashboard.cloudlabs-gcp.no](https://kube-dashboard.cloudlabs-gcp.no). It requires an authentication token. Run `gcloud auth print-access-token` to generate a token, and copy it to online UI to log in.
+5. An online UI using Headlamp is available at [kube-dashboard.cloudlabs-gcp.no](https://kube-dashboard.cloudlabs-gcp.no).
 
 
 ## Your first pod - the imperative way
@@ -82,10 +82,10 @@ We'll create a namespace and then deploy a simple app and connect to it, all usi
 
 
 2. Let's start by creating a single pod that runs `podinfo`:
-    
+
     `kubectl run --namespace <namespace-name> <pod-name> --image=stefanprodan/podinfo --port=80`
     
-    You will get a warning about resources, ignore the warning for now.
+    You will get a warning about resources, ignore the warning for now, but confirm that the last line is similar to `pod/<pod-name> created`.
 
 > [!TIP]
 > Use `kubectl <subcommand> --help` to get help on any `kubectl` subcommand. E.g., `kubectl run --help`.
@@ -94,11 +94,12 @@ We'll create a namespace and then deploy a simple app and connect to it, all usi
 3. Let's look at the app created. Run `kubectl get --namespace <namespace-name> pods`. You should get output looking like:
 
     ```text
-    NAME                READY   UP-TO-DATE   AVAILABLE   AGE
-    <deployment-name>   2/2     2            2           2m34s
+    NAME         READY   STATUS    RESTARTS   AGE
+    <pod-name>   1/1     Running   0          64s
+   
     ```
 
-    You can view the app information using `kubectl describe --namespace <namespace-name> pod <pod-name>`.
+    You can view the app information using `kubectl describe --namespace <namespace-name> pod <pod-name>`. This will sho all available information about the pod, including labels and annotations, containers running, internal IP-addresses, containers, related events and more. The command is useful when debugging.
 
 > [!TIP] 
 > Most `kubectl` commands support abbreviations of the types. For example, `kubectl get pods` can be shortened to `kubectl get po`.
@@ -112,7 +113,7 @@ We'll create a namespace and then deploy a simple app and connect to it, all usi
     * Run `kubectl edit --namespace <namespace-name> pod <pod-name>`. This will open the pod manifest in your default text editor.
     * Find the line with `image: stefanprodan/podinfo` and change it to `image: nginx`. Save and close the editor.
     * Open a new shell, and run `kubectl get --namespace <namespace-name> pods --watch`. This will show all pods in the namespace, and the `--watch` flag also print new lines for every update.
-    * Observe the output from the watch command in the second shell. You should see that the pod is terminated and a new pod is created with the updated image.
+    * Observe the output from the watch command in the second shell. You should see that the pod is terminated and a new pod is created with the updated image. If you're not quick enough, the pod might have restarted before you've run the `kubectl get` command, but you should then see a change in the "Restarts" column.
 
 5. To access the pod and verify nginx is running, we'll do a port-forwarding from our local computer to the cluster. In your shell, run:
 
@@ -122,7 +123,7 @@ We'll create a namespace and then deploy a simple app and connect to it, all usi
 
     This will create a tunnel from your local computer on port 8080, to the pod in the cluster on port `80`. Open [localhost:8080](http://localhost:8080) in your browser to confirm that the app is running smoothly.
 
-    Use `CTRL-C` or equivalent to cancel the port-forwarding.
+    Use `CTRL-C` or equivalent to cancel the port-forwarding in your shell.
 
 
 6. Continue watching the pod updates in the second shell, and run `kubectl delete --namespace <namespace-name> pod <pod-name>`.
@@ -133,10 +134,10 @@ We'll create a namespace and then deploy a simple app and connect to it, all usi
 
 ## Your first pod - the declarative way
 
-Running commands to spin up pods is not ideal. We want to use code to specify our resources.
+Running commands to spin up pods is not ideal - it's not reproducible, it's hard to remember the commands and it's not as flexible as code. We want to use code to specify our resources.
 
 
-1. Create a folder called, `podinfo`, and put the configuration you create in the following tasks in this folder.
+1. Create a folder called for your Kubernetes manifests, `podinfo`, and put the configuration you create in the following tasks in this folder. The folder can be anywhere you prefer.
 
     For most resource creation commands, you can add `--dry-run=client -o yaml` to generate the corresponding YAML configuration. The configuration can then be applied by running `kubectl apply`. E.g., to create a namespace like before, run `kubectl create namespace <namespace-name> --dry-run=client -o yaml`. Then copy the configuration into a code editor, into a file called `podinfo/namespace.yaml`. 
 
@@ -210,7 +211,7 @@ Deployments are a higher-level abstraction that manages Pods. They ensure that a
 2. Apply the manifest like before: `kubectl apply -R -f podinfo/`
 
 3. Verify using either the CLI, or Monokle/k9s. You should see 1 deployment and 2 pods running. The pods have names prefixed with the deployment name.
-    * CLI: `kubectl get deployments --namespace <namespace-name>` and `kubectl get pods --namespace <namespace-name>`. 
+    * CLI: `kubectl get deployments --namespace <namespace-name>` and `kubectl get pods --namespace <namespace-name>`.
     * k9s: Go to the namespace using `:ns`. View deployments using `:deployments` or `:deploy` to view deployments. View pods using `:pods` or `:po`.
     * Monokle: Select the namespace, and view workloads > deployments and workloads > pods
 
@@ -246,7 +247,7 @@ Pods are ephemeral; if they crash or are rescheduled, their IP addresses change.
     * k9s: `:services` or `:svc`
     * Monokle: View services under the Network subheading.
 
-3. Use port-forwarding to access the service. In k9s, find the service and use `shift-f` like before. the For the CLI, use 
+3. Use port-forwarding to access the service. In k9s, find the service and use `shift-f` like before. the For the CLI, use
 
     ```sh
     kubectl port-forward --namespace <namespace-name> service/<service-name> 9898:80
@@ -254,7 +255,7 @@ Pods are ephemeral; if they crash or are rescheduled, their IP addresses change.
 
 > [!NOTE]
 > Take a look at how traffic is routed when refreshing in the browser. Which pod answers the request?
-> 
+>
 > The service normally load balances requests across all pods matching its selector. However, port-forwarding towards a service will always send traffic to the first pod in the list managed by the service.
 
 4. Cancel the port-forwarding before proceeding.
@@ -379,6 +380,32 @@ You can configure security settings for a Pod or Container using the `securityCo
 3. Apply the changes.
 4. Verify the changes by inspecting the pod: `kubectl get pod <pod-name> -o yaml`.
 5. Try to write to the filesystem inside the container: `kubectl exec -it <pod-name> -- touch /tmp/test`. This should fail if the filesystem is read-only (note: you might need to mount a volume to `/tmp` if the app needs to write there, but for this exercise, seeing it fail is the goal).
+
+### Service Accounts
+
+Every pod is assigned a Service Account. By default, a token for this account is mounted into the pod, allowing it to talk to the Kubernetes API. If your app doesn't need to talk to the API, you should disable this.
+
+1. Modify `podinfo/deployment.yaml` to set `automountServiceAccountToken: false` in the Pod spec.
+
+    > [!TIP]
+    > See [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting).
+
+2. Apply the changes.
+3. Verify that the token is gone by running `kubectl exec -it <pod-name> -- ls /var/run/secrets/kubernetes.io/serviceaccount`. This should now return an error (No such file or directory).
+
+### Network Policies
+
+By default, all pods in a cluster can communicate with each other. Network Policies allow you to restrict this traffic.
+
+1. Create a new file `podinfo/networkpolicy.yaml`.
+2. Define a `NetworkPolicy` that denies all ingress traffic to the namespace.
+
+    > [!TIP]
+    > See [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-deny-all-ingress-traffic).
+
+3. Apply the policy.
+4. Try to access your application. It should now be unreachable (timeout).
+5. (Optional) Modify the policy to allow traffic on port 9898.
 
 ## Cleanup
 
